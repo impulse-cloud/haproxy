@@ -1,5 +1,5 @@
-WEB_CONTAINERS = web-a web-b web-c web-d web-e
-LB_CONTAINERS = lb1 lb2 lb3 lb4 lb5 lb6 lb7
+WEB_CONTAINERS = web-a web-b web-c web-d web-e web-f web-g web-h web-i web-j web-k web-l web-m web-n
+LB_CONTAINERS = lb0 lb1 lb2 lb3 lb4 lb5 lb6
 NODE_FQDN = http://302a494c-tifayuki.node.tutum.io
 services = $(shell tutum service ps -q)
 random := $(shell awk 'BEGIN{srand();printf("%d", 65536*rand())}')
@@ -41,49 +41,116 @@ test-without-tutum:build
 	@echo "==> Testing if haproxy is running properly"
 	docker run -d --name web-a -e HOSTNAME="web-a" tutum/hello-world
 	docker run -d --name web-b -e HOSTNAME="web-b" tutum/hello-world
-	docker run -d --name lb1 --link web-a:web-a --link web-b:web-b -p 8000:80 tifayuki/haproxy-test
-	wget --spider --retry-connrefused --no-check-certificate -T 5 http://localhost:8000
-	curl --retry 10 --retry-delay 5 -L -I http://localhost:8000 | grep "200 OK"
-	@echo
-
-	@echo "==> Testing virtual host: specified in haproxy container"
-	docker run -d --name lb2 --link web-a:web-a --link web-b:web-b -e VIRTUAL_HOST=" web-a = www.web-a.org, www.test.org, web-b = www.web-b.org " -p 8001:80 tifayuki/haproxy-test
-	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8001 || true
-	curl --retry 10 --retry-delay 5 -H 'Host:www.web-a.org' 127.0.0.1:8001 | grep 'My hostname is web-a'
-	curl --retry 10 --retry-delay 5 -H 'Host:www.test.org' 127.0.0.1:8001 | grep 'My hostname is web-a'
-	curl --retry 10 --retry-delay 5 -H 'Host:www.web-b.org' 127.0.0.1:8001 | grep 'My hostname is web-b'
-	@echo
-
-	@echo "==> Testing virtual host: specified in linked containers"
-	docker run -d --name web-c -e HOSTNAME=web-c -e VIRTUAL_HOST=web-c.org tutum/hello-world
-	docker run -d --name web-d -e HOSTNAME=web-d -e VIRTUAL_HOST="web-d.org, test.org" tutum/hello-world
-	docker run -d --name lb3 --link web-c:web-c --link web-d:web-d -p 8002:80 tifayuki/haproxy-test
-	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8002 || true
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:web-c.org' 127.0.0.1:8002 | grep 'My hostname is web-c'
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:test.org' 127.0.0.1:8002 | grep 'My hostname is web-d'
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:web-d.org' 127.0.0.1:8002 | grep 'My hostname is web-d'
+	docker run -d --name lb0 --link web-a:web-a --link web-b:web-b -p 8000:80 tifayuki/haproxy-test
+	wget --spider --retry-connrefused --no-check-certificate -T 5 http://localhost:8000 > /dev/null
+	curl --retry 10 --retry-delay 5 -L -I http://localhost:8000 | grep "200 OK" > /dev/null
 	@echo
 
 	@echo "==> Testing SSL settings"
-	docker run -d --name lb4 --link web-a:web-a -e SSL_CERT="$(certs)" -p 443:443 tifayuki/haproxy-test
+	docker run -d --name lb1 --link web-a:web-a -e SSL_CERT="$(certs)" -p 443:443 tifayuki/haproxy-test
 	sleep 5
-	curl --retry 10 --retry-delay 5 -sSfL --cacert ca.pem -L https://localhost | grep 'My hostname is web-a'
+	curl --retry 10 --retry-delay 5 -sSfL --cacert ca.pem -L https://localhost | grep 'My hostname is web-a' > /dev/null
 	@echo
 
-	@echo "==> Testing wildcard sub-domains on virtual host (HDR=hdr_end/hdr_beg)"
-	docker run -d --name lb5 --link web-c:web-c -e HDR="hdr_end" -p 8003:80 tifayuki/haproxy-test
-	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8003 || true
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:www.web-c.org' 127.0.0.1:8003 | grep 'My hostname is web-c'
-	docker run -d --name lb6 --link web-c:web-c -e HDR=hdr_beg -e FRONTEND_PORT=8005 -p 8005:8005 tifayuki/haproxy-test
-	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8005 || true
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:web-c.org:8005' 127.0.0.1:8005 | grep 'My hostname is web-c'
+	@echo "==> Testing virtual host"
+	docker run -d --name web-c -e HOSTNAME=web-c -e VIRTUAL_HOST=web-c.org tutum/hello-world
+	docker run -d --name web-d -e HOSTNAME=web-d -e VIRTUAL_HOST="web-d.org, test.org" tutum/hello-world
+	docker run -d --name lb2 --link web-c:web-c --link web-d:web-d -p 8002:80 tifayuki/haproxy-test
+	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8002 || true > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:web-c.org' 127.0.0.1:8002 | grep -iF 'My hostname is web-c' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:test.org' 127.0.0.1:8002 | grep -iF 'My hostname is web-d' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:web-d.org' 127.0.0.1:8002 | grep -iF 'My hostname is web-d' > /dev/null
 	@echo
 
-	@echo "==> Testing VIRTUAL_HOST with non-default FRONTEND_PORT"
-	docker run -d --name web-e -e HOSTNAME=web-e -e VIRTUAL_HOST="web-e.org:8004" tutum/hello-world
-	docker run -d --name lb7 --link web-e:web-e -e FRONTEND_PORT=8004 -p 8004:8004 tifayuki/haproxy-test
-	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8004 || true
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:web-e.org:8004' 127.0.0.1:8004 | grep 'My hostname is web-e'
+	@echo "==> Testing virtual host starting with wildcard"
+	docker run -d --name web-e -e HOSTNAME=web-e -e VIRTUAL_HOST="*.web-e.org" tutum/hello-world
+	docker run -d --name lb3 --link web-e:web-e -p 8003:80 tifayuki/haproxy-test
+	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8003 || true > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:www.web-e.org' 127.0.0.1:8003 | grep -iF 'My hostname is web-e' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:abc.web-e.org' 127.0.0.1:8003 | grep -iF 'My hostname is web-e' > /dev/null
+	curl -sSL -H 'Host:abc.web.org' 127.0.0.1:8003 | grep -iF '503 Service Unavailable' > /dev/null
+	@echo
+
+	@echo "==> Testing virtual host containing with wildcard"
+	docker run -d --name web-f -e HOSTNAME=web-f -e VIRTUAL_HOST="www.web*.org" tutum/hello-world
+	docker run -d --name lb4 --link web-f:web-f -p 8004:80 tifayuki/haproxy-test
+	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8004 || true > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:www.web.org' 127.0.0.1:8004 | grep -iF 'My hostname is web-f' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:www.webtest.org' 127.0.0.1:8004 | grep -iF 'My hostname is web-f' > /dev/null
+	curl -sSL -H 'Host:abc.wbbtest.org' 127.0.0.1:8004 | grep -iF '503 Service Unavailable' > /dev/null
+	@echo
+
+	@echo "==> Testing virtual path"
+	docker run -d --name web-g -e HOSTNAME=web-g -e VIRTUAL_HOST="*/pg/, */pg, */pg/*, */*/pg/*" tutum/hello-world
+	docker run -d --name web-h -e HOSTNAME=web-h -e VIRTUAL_HOST="*/ph" tutum/hello-world
+	docker run -d --name web-i -e HOSTNAME=web-i -e VIRTUAL_HOST="*/pi/" tutum/hello-world
+	docker run -d --name web-j -e HOSTNAME=web-j -e VIRTUAL_HOST="*/pj/*" tutum/hello-world
+	docker run -d --name web-k -e HOSTNAME=web-k -e VIRTUAL_HOST="*/*/pk/*" tutum/hello-world
+	docker run -d --name web-l -e HOSTNAME=web-l -e VIRTUAL_HOST="*/p*l/" tutum/hello-world
+	docker run -d --name web-m -e HOSTNAME=web-m -e VIRTUAL_HOST="*/*.js" tutum/hello-world
+	docker run -d --name lb5 --link web-g:web-g --link web-h:web-h --link web-i:web-i --link web-j:web-j --link web-k:web-k --link web-l:web-l --link web-m:web-m -p 8005:80 tifayuki/haproxy-test
+	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8005 || true > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/pg | grep -iF 'My hostname is web-g' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/pg/ | grep -iF 'My hostname is web-g' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/pg/abc | grep -iF 'My hostname is web-g' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/abc/pg/ | grep -iF 'My hostname is web-g' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/abc/pg/123 | grep -iF 'My hostname is web-g' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/pg?u=user&p=pass" | grep -iF 'My hostname is web-g' > /dev/null
+
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/ph | grep -iF 'My hostname is web-h' > /dev/null
+	curl -sSL 127.0.0.1:8005/ph/ | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL 127.0.0.1:8005/ph/abc | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL 127.0.0.1:8005/abc/ph/ | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL 127.0.0.1:8005/abc/ph/123 | grep -iF '503 Service Unavailable' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/ph?u=user&p=pass" | grep -iF 'My hostname is web-h' > /dev/null
+
+	curl -sSL 127.0.0.1:8005/pi | grep -iF '503 Service Unavailable' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/pi/ | grep -iF 'My hostname is web-i' > /dev/null
+	curl -sSL 127.0.0.1:8005/pi/abc | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL 127.0.0.1:8005/abc/pi/ | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL 127.0.0.1:8005/abc/pi/123 | grep -iF '503 Service Unavailable' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/pi/?u=user&p=pass" | grep -iF 'My hostname is web-i' > /dev/null
+
+	curl -sSL 127.0.0.1:8005/pj | grep -iF '503 Service Unavailable' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/pj/ | grep -iF 'My hostname is web-j' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/pj/abc | grep -iF 'My hostname is web-j' > /dev/null
+	curl -sSL 127.0.0.1:8005/abc/pj/ | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL 127.0.0.1:8005/abc/pj/123 | grep -iF '503 Service Unavailable' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/pj/?u=user&p=pass" | grep -iF 'My hostname is web-j' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/pj/abc?u=user&p=pass" | grep -iF 'My hostname is web-j' > /dev/null
+
+	curl -sSL 127.0.0.1:8005/pk | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL 127.0.0.1:8005/pk/ | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL 127.0.0.1:8005/pk/abc | grep -iF '503 Service Unavailable' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/abc/pk/ | grep -iF 'My hostname is web-k' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/abc/pk/123 | grep -iF 'My hostname is web-k' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/abc/pk/?u=user&p=pass" | grep -iF 'My hostname is web-k' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/abc/pk/123?u=user&p=pass" | grep -iF 'My hostname is web-k' > /dev/null
+
+	curl -sSL 127.0.0.1:8005/pl | grep -iF '503 Service Unavailable' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/pl/ | grep -iF 'My hostname is web-l' > /dev/null
+	curl -sSL 127.0.0.1:8005/p3l | grep -iF '503 Service Unavailable' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/p3l/ | grep -iF 'My hostname is web-l' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/pl/?u=user&p=pass" | grep -iF 'My hostname is web-l' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/p3l/?u=user&p=pass" | grep -iF 'My hostname is web-l' > /dev/null
+
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/abc.js | grep -iF 'My hostname is web-m' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL 127.0.0.1:8005/path/123.js | grep -iF 'My hostname is web-m' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/abc.js?u=user&p=pass" | grep -iF 'My hostname is web-m' > /dev/null
+	curl --retry 10 --retry-delay 5 -sSfL "127.0.0.1:8005/path/123.js?u=user&p=pass" | grep -iF 'My hostname is web-m' > /dev/null
+	curl -sSL 127.0.0.1:8005/abc.jpg | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL 127.0.0.1:8005/path/abc.jpg | grep -iF '503 Service Unavailable' > /dev/null
+	@echo
+
+	@echo "==> Test virtual host combined with virtual path"
+	docker run -d --name web-n -e HOSTNAME=web-n -e VIRTUAL_HOST="http://www.web-n.org/p3/" tutum/hello-world
+	docker run -d --name lb6 --link web-n:web-n -p 8006:80 tifayuki/haproxy-test
+	wget --spider --retry-connrefused --no-check-certificate -q -T 5 127.0.0.1:8006 || true > /dev/null
+	curl --retry 10 --retry-delay 5 -H "Host:www.web-n.org" -sSfL 127.0.0.1:8006/p3/ | grep -iF 'My hostname is web-n' > /dev/null
+	curl -sSL 127.0.0.1:8006/p3/ | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL -H "Host:www.web-n.org" 127.0.0.1:8006 | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL -H "Host:www.web-n.org" 127.0.0.1:8006/p3 | grep -iF '503 Service Unavailable' > /dev/null
+	curl -sSL -H "Host:www.web.org" 127.0.0.1:8006/p3 | grep -iF '503 Service Unavailable' > /dev/null
 
 push-image: build
 	@echo "=> Pushing the image to tifayuki/haproxy"
@@ -101,36 +168,12 @@ test-with-tutum:push-image clean-tutum-service
 	@set -e
 	@echo "====== Running integration tests with Tutum ======"
 
-	@echo "==> Testing if haproxy is running properly with tutum"
+	@echo "==> Testing if haproxy is running propkrly with tutum"
 	tutum service run --sync --name $(random)web-a -e HOSTNAME="web-a" tutum/hello-world
 	tutum service run --sync --name $(random)web-b -e HOSTNAME="web-b" tutum/hello-world
 	tutum service run --role global --sync --name $(random)lb1 --link $(random)web-a:web-a --link $(random)web-b:web-b -p 8000:80 tifayuki/haproxy-test
 	wget --spider --retry-connrefused --no-check-certificate -q -T 5 $(NODE_FQDN):8000 || true
 	curl --retry 10 --retry-delay 5 -sSfL -I $(NODE_FQDN):8000 | grep "200 OK"
-	@echo
-
-	@echo "==> Testing virtual host: specified in haproxy container with tutum"
-	tutum service run --role global --sync --name $(random)lb2 --link $(random)web-a:web-a --link $(random)web-b:web-b -e VIRTUAL_HOST=" web-a = www.web-a.org, www.test.org, web-b = www.web-b.org " -p 8001:80 tifayuki/haproxy-test
-	wget --spider --retry-connrefused --no-check-certificate -q -T 5 $(NODE_FQDN):8001 || true
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:www.web-a.org' $(NODE_FQDN):8001 | grep 'My hostname is web-a'
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:www.test.org' $(NODE_FQDN):8001 | grep 'My hostname is web-a'
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:www.web-b.org' $(NODE_FQDN):8001 | grep 'My hostname is web-b'
-	@echo
-
-	@echo "==> Testing virtual host: specified in linked containers with tutum"
-	tutum service run --sync --name $(random)web-c -e HOSTNAME=web-c -e VIRTUAL_HOST=web-c.org tutum/hello-world
-	tutum service run --sync --name $(random)web-d -e HOSTNAME=web-d -e VIRTUAL_HOST="web-d.org, test.org" tutum/hello-world
-	tutum service run --role global --sync --name $(random)lb3 --link $(random)web-c:web-c --link $(random)web-d:web-d -p 8002:80 tifayuki/haproxy-test
-	wget --spider --retry-connrefused --no-check-certificate -q -T 5 $(NODE_FQDN):8002 || true
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:web-c.org' $(NODE_FQDN):8002| grep 'My hostname is web-c'
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:test.org' $(NODE_FQDN):8002 | grep 'My hostname is web-d'
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:web-d.org' $(NODE_FQDN):8002 | grep 'My hostname is web-d'
-	@echo
-
-	@echo "==> Testing wildcard sub-domains on virtual host (HDR=hdr_end)"
-	tutum service run --role global --name $(random)lb4 --link $(random)web-c:web-c -e HDR="hdr_end" -p 8003:80 tifayuki/haproxy-test
-	wget --spider --retry-connrefused --no-check-certificate -q -T 5 $(NODE_FQDN):8003 || true
-	curl --retry 10 --retry-delay 5 -sSfL -H 'Host:www.web-c.org' $(NODE_FQDN):8003 | grep 'My hostname is web-c'
 	@echo
 
 	@echo "==> Testing container stop"
