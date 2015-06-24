@@ -1,5 +1,6 @@
-FROM ubuntu:trusty
-MAINTAINER Feng Honglin <hfeng@tutum.co>
+FROM impulsecloud/ic-ubuntu:latest
+# Forked from tutum/haproxy
+MAINTAINER Johann du Toit <johann@impulsecloud.com.au>
 
 # Install pip and haproxy
 RUN echo 'deb http://ppa.launchpad.net/vbernat/haproxy-1.5/ubuntu trusty main' >> /etc/apt/sources.list && \
