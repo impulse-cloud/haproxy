@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -n "${EASYDNS_USER}" ] && [ -n "${EASYDNS_TOKEN}" ] && [ -n "${EASYDNS_HOSTNAME}" ]; then
+  echo "Setting EasyDNS Dynamic IP Address"
+  wget -O - https://${EASYDNS_USER}:${EASYDNS_TOKEN}@api.cp.easydns.com/dyn/generic.php?hostname=${EASYDNS_HOSTNAME} > /dev/null
+fi
+
 if [ "${VIRTUAL_HOST}" = "**None**" ]; then
     unset VIRTUAL_HOST
 fi
